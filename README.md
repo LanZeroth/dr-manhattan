@@ -1,6 +1,7 @@
 # dr-manhattan
 
-CCXT-style unified API for prediction markets. Simple, scalable, and easy to extend.
+**CCXT-style unified API for prediction markets.**  
+Simple, scalable, and easy to extend.
 
 [![](https://deepwiki.com/badge.svg)](https://deepwiki.com/guzus/dr-manhattan)
 
@@ -12,370 +13,128 @@ CCXT-style unified API for prediction markets. Simple, scalable, and easy to ext
   <img src="assets/predict_fun.jpg" alt="Predict.fun" width="50"/>
 </p>
 
-## Architecture
+## What is dr-manhattan?
 
-`dr-manhattan` provides a unified interface to interact with multiple prediction market platforms, similar to how CCXT works for cryptocurrency exchanges.
+`dr-manhattan` is a unified Python library that lets you interact with multiple prediction market platforms using the **same simple code**.
 
-### Core Components
+It works similarly to **CCXT** for crypto exchanges. You can fetch markets, place orders, check balances, and more — all with consistent methods across different platforms.
 
-```
-dr_manhattan/
-├── base/               # Core abstractions
-│   ├── exchange.py     # Abstract base class for exchanges
-│   ├── exchange_client.py  # High-level trading client
-│   ├── exchange_factory.py # Exchange instantiation
-│   ├── strategy.py     # Strategy base class
-│   ├── order_tracker.py    # Order event tracking
-│   ├── websocket.py    # WebSocket base class
-│   └── errors.py       # Exception hierarchy
-├── exchanges/          # Exchange implementations
-│   ├── polymarket/     # Polymarket (mixin-based package) → [detailed docs](dr_manhattan/exchanges/polymarket/README.md)
-│   │   ├── __init__.py         # Unified Polymarket class
-│   │   ├── polymarket_core.py  # Constants, init, request helpers
-│   │   ├── polymarket_clob.py  # CLOB API (orders, positions)
-│   │   ├── polymarket_gamma.py # Gamma API (markets, events, search)
-│   │   ├── polymarket_data.py  # Data API (trades, analytics)
-│   │   ├── polymarket_ctf.py   # CTF (split/merge/redeem)
-│   │   ├── polymarket_ws.py    # Market/User WebSocket
-│   │   ├── polymarket_ws_ext.py # Sports/RTDS WebSocket
-│   │   ├── polymarket_builder.py  # Builder API
-│   │   └── polymarket_operator.py # Operator API
-│   ├── kalshi.py
-│   ├── opinion.py
-│   ├── limitless.py
-│   ├── limitless_ws.py
-│   ├── predictfun.py
-│   └── predictfun_ws.py
-├── models/             # Data models
-│   ├── market.py
-│   ├── order.py
-│   ├── orderbook.py
-│   └── position.py
-├── strategies/         # Strategy implementations
-└── utils/              # Utilities
-```
+---
 
-### Design Principles
+## Quick Start
 
-1. **Unified Interface**: All exchanges implement the same `Exchange` base class
-2. **Scalability**: Adding new exchanges is straightforward - just implement the abstract methods
-3. **Simplicity**: Clean abstractions with minimal dependencies
-4. **Type Safety**: Full type hints throughout
-
-### Key Features
-
-- Fetch markets and market data
-- Create and cancel orders
-- Query positions and balances
-- WebSocket support for real-time data
-- Strategy base class for building trading strategies
-- Order tracking and event logging
-- Standardized error handling
-- Exchange-agnostic code
-- **MCP server for Claude Desktop integration**
-
-## Installation
+### 1. Installation
 
 ```bash
+# Create a virtual environment
 uv venv
+
+# Install the package in editable mode
 uv pip install -e .
 ```
 
-## Usage
-
-### Basic Usage (Public API)
+### 2. Basic Usage (No login required)
 
 ```python
 import dr_manhattan
 
-# Initialize exchange without authentication
+# Initialize exchanges
 polymarket = dr_manhattan.Polymarket({'timeout': 30})
 opinion = dr_manhattan.Opinion({'timeout': 30})
-limitless = dr_manhattan.Limitless({'timeout': 30})
-predictfun = dr_manhattan.PredictFun({'timeout': 30})
 
 # Fetch markets
 markets = polymarket.fetch_markets()
-for market in markets:
-    print(f"{market.question}: {market.prices}")
+
+# Print first few markets
+for market in markets[:5]:
+    print(f"Question: {market.question}")
+    print(f"Prices : {market.prices}\n")
 ```
 
-### Advanced Usage (With Authentication)
+---
+
+## Key Features
+
+- Unified interface for multiple prediction markets
+- Support for Polymarket, Opinion, Limitless, Predict.fun, and more
+- Place & cancel orders
+- Check positions and balances
+- Real-time WebSocket support
+- Strategy base class for building bots
+- **MCP Server** – Trade directly from Claude Desktop / Claude Code
+
+---
+
+## Advanced Usage (With Authentication)
 
 ```python
-import dr_manhattan
-
-# Polymarket
+# Example: Polymarket
 polymarket = dr_manhattan.Polymarket({
-    'private_key': 'your_private_key',
+    'private_key': 'your_private_key_here',
     'funder': 'your_funder_address',
 })
-
-# Opinion (BNB Chain)
-opinion = dr_manhattan.Opinion({
-    'api_key': 'your_api_key',
-    'private_key': 'your_private_key',
-    'multi_sig_addr': 'your_multi_sig_addr'
-})
-
-# Limitless
-limitless = dr_manhattan.Limitless({
-    'private_key': 'your_private_key',
-    'timeout': 30
-})
-
-# Predict.fun (BNB Chain)
-predictfun = dr_manhattan.PredictFun({
-    'api_key': 'your_api_key',
-    'private_key': 'your_private_key',
-    'use_smart_wallet': True,
-    'smart_wallet_owner_private_key': 'your_owner_private_key',
-    'smart_wallet_address': 'your_smart_wallet_address'
-})
-
-# Create order
-order = polymarket.create_order(
-    market_id="market_123",
-    outcome="Yes",
-    side=dr_manhattan.OrderSide.BUY,
-    price=0.65,
-    size=100,
-    params={'token_id': 'token_id'}
-)
-
-# Fetch balance
-balance = polymarket.fetch_balance()
-print(f"USDC: {balance['USDC']}")
 ```
 
-### Using the Strategy Base Class
+> **⚠️ Security Note:** Never hardcode or commit your private keys. Use environment variables or `.env` files.
 
-```python
-from dr_manhattan import Strategy
+---
 
-class MyStrategy(Strategy):
-    def on_tick(self):
-        self.log_status()
-        self.place_bbo_orders()
+## MCP Server (Trade using Claude)
 
-strategy = MyStrategy(exchange, market_id="123")
-strategy.run()
-```
-
-### Exchange Factory
-
-```python
-from dr_manhattan import create_exchange, list_exchanges
-
-# List available exchanges
-print(list_exchanges())  # ['polymarket', 'limitless', 'opinion', 'predictfun']
-
-# Create exchange by name
-exchange = create_exchange('polymarket', {'timeout': 30})
-```
-
-### MCP Server
-
-Trade prediction markets directly from Claude using the Model Context Protocol (MCP).
+You can connect this library directly to Claude:
 
 ```bash
-# Install with MCP dependencies
+# Install with MCP support
 uv sync --extra mcp
 
-# Configure credentials
+# Copy environment file
 cp .env.example .env
-# Edit .env with your POLYMARKET_PRIVATE_KEY and POLYMARKET_FUNDER
 ```
 
-#### Claude Code
+Then configure Claude Desktop or Claude Code using the settings shown in the MCP section.
 
-Add to `~/.claude/settings.json` or project `.mcp.json`:
+---
 
-```json
-{
-  "mcpServers": {
-    "dr-manhattan": {
-      "command": "/path/to/dr-manhattan/.venv/bin/python",
-      "args": ["-m", "dr_manhattan.mcp.server"],
-      "cwd": "/path/to/dr-manhattan"
-    }
-  }
-}
+## Project Structure
+
+```bash
+dr_manhattan/
+├── base/           # Core abstractions and base classes
+├── exchanges/      # Support for each platform
+├── models/         # Data models (Market, Order, Position...)
+├── strategies/     # Ready-to-use strategy templates
+└── utils/          # Helper functions
 ```
 
-Restart Claude Code and verify with `/mcp`.
-
-#### Claude Desktop
-
-Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "dr-manhattan": {
-      "command": "/path/to/dr-manhattan/.venv/bin/python",
-      "args": ["-m", "dr_manhattan.mcp.server"],
-      "cwd": "/path/to/dr-manhattan"
-    }
-  }
-}
-```
-
-#### Remote Server (No Installation Required)
-
-Connect to the hosted MCP server via SSE. No private keys needed - uses Polymarket Builder profile:
-
-```json
-{
-  "mcpServers": {
-    "dr-manhattan": {
-      "type": "sse",
-      "url": "https://dr-manhattan-mcp-production.up.railway.app/sse",
-      "headers": {
-        "X-Polymarket-Api-Key": "your_api_key",
-        "X-Polymarket-Api-Secret": "your_api_secret",
-        "X-Polymarket-Passphrase": "your_passphrase"
-      }
-    }
-  }
-}
-```
-
-**Note:** Remote server supports Polymarket trading only. Other exchanges are read-only for security. See [wiki/mcp/remote-server.md](wiki/mcp/remote-server.md) for details.
-
-After restarting, you can:
-- "Show my Polymarket balance"
-- "Find active prediction markets"
-- "Buy 10 USDC of Yes on market X at 0.55"
-
-See [examples/mcp_usage_example.md](examples/mcp_usage_example.md) for the complete setup guide.
-
-## Adding New Exchanges
-
-To add a new exchange, create a class that inherits from `Exchange`:
-
-```python
-from dr_manhattan.base import Exchange
-
-class NewExchange(Exchange):
-    @property
-    def id(self) -> str:
-        return "newexchange"
-
-    @property
-    def name(self) -> str:
-        return "New Exchange"
-
-    def fetch_markets(self, params=None):
-        # Implement API call
-        pass
-
-    # Implement other abstract methods...
-```
-
-Register in `dr_manhattan/__init__.py`:
-
-```python
-from .exchanges.newexchange import NewExchange
-
-exchanges = {
-    "polymarket": Polymarket,
-    "opinion": Opinion,
-    "limitless": Limitless,
-    "predictfun": PredictFun,
-    "newexchange": NewExchange,
-}
-```
-
-## Data Models
-
-### Market
-- Question and outcomes
-- Prices and volume
-- Close time and status
-
-### Order
-- Market and outcome
-- Side (buy/sell), price, size
-- Status tracking
-
-### Position
-- Current holdings
-- PnL calculation
-- Average entry price
-
-### OrderBook
-- Bids and asks
-- Best bid/ask prices
-
-## Error Handling
-
-All errors inherit from `DrManhattanError`:
-- `ExchangeError` - Exchange-specific errors
-- `NetworkError` - Connectivity issues
-- `RateLimitError` - Rate limit exceeded
-- `AuthenticationError` - Auth failures
-- `InsufficientFunds` - Not enough balance
-- `InvalidOrder` - Invalid order parameters
-- `MarketNotFound` - Market doesn't exist
+---
 
 ## Examples
 
-Check out the [examples/](examples/) directory for working examples:
+Check the [`examples/`](examples/) folder:
 
-- **mcp_usage_example.md** - Complete MCP server setup and usage guide for Claude Desktop
-- **list_all_markets.py** - List markets from any exchange
-- **spread_strategy.py** - Exchange-agnostic BBO market making strategy
+- `list_all_markets.py` — List markets from any exchange
+- `spread_strategy.py` — Simple market making strategy
 
-Run examples:
+Run an example:
 
 ```bash
-# List markets
 uv run python examples/list_all_markets.py polymarket
-uv run python examples/list_all_markets.py opinion
-uv run python examples/list_all_markets.py limitless
-uv run python examples/list_all_markets.py predictfun
-
-# Run spread strategy
-uv run python examples/spread_strategy.py --exchange polymarket --slug fed-decision
-uv run python examples/spread_strategy.py --exchange opinion --market-id 813
 ```
 
-See [examples/README.md](examples/README.md) for detailed documentation.
+---
 
 ## Contributing with Claude
 
-<p align="center">
-  <img src="assets/claude.png" alt="Claude" width="100"/>
-</p>
+This project is designed to work with **Claude Code**.  
+Just open an issue, describe what you want, and mention `@claude`.
 
-We use Claude Code to implement new features from trading strategy ideas:
+---
 
-1. Spot a good strategy on Twitter/X
-2. Create a GitHub issue describing the strategy
-3. Add a label: `feature`, `bug`, or `chore`
-4. Mention `@claude` in the issue
-5. Claude creates a PR with the implementation
-
-Branch naming follows the label:
-- `feature` -> `feat/issue-{number}`
-- `bug` -> `fix/issue-{number}`
-- `chore` -> `chore/issue-{number}`
-
-See [.github/workflows/claude.yml](.github/workflows/claude.yml) for details.
-
-## Dependencies
+## Requirements
 
 - Python >= 3.11
-- requests >= 2.31.0
-- websockets >= 15.0.1
-- python-socketio >= 5.11.0
-- eth-account >= 0.11.0
-- py-clob-client >= 0.28.0
-- opinion-clob-sdk >= 0.4.3
-- pandas >= 2.0.0
+- Recommended: [`uv`](https://docs.astral.sh/uv/) package manager
 
-Development:
-- pytest
-- black
-- ruff
+---
+
+**Ready to get started?** Try the Quick Start above!
